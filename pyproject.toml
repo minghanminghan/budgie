@@ -47,3 +47,4 @@ explicit = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: loads the real embedding model (set RUN_SLOW=1)"]
