@@ -31,8 +31,9 @@ services:
   tailscale:
     image: tailscale/tailscale:latest
     hostname: newsletter
-    env_file: .env
+    # Only the auth key: the sidecar must not see the app's secrets.
     environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?set TS_AUTHKEY in .env}
       TS_HOSTNAME: newsletter
       TS_STATE_DIR: /var/lib/tailscale
       TS_SERVE_CONFIG: /config/serve.json
