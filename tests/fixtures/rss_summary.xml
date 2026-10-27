@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+<title>Summary Blog</title>
+<link>https://summary.example.com/</link>
+<description>Posts</description>
+<item>
+<title>Feed Title</title>
+<link>https://summary.example.com/posts/article</link>
+<guid>summary-1</guid>
+<pubDate>Sun, 25 Oct 2026 09:00:00 GMT</pubDate>
+<description>A short summary of the post.</description>
+</item>
+</channel></rss>
