@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Sources{% endblock %}
+{% block head %}
+<style>
+  .sources { list-style: none; padding: 0; margin: 0; }
+  .sources li { display: grid; grid-template-columns: 1fr auto; gap: .2rem 1rem; padding: .8rem 0; border-top: 1px solid var(--rule); }
+  .sources strong { font: 500 1.1rem var(--serif); }
+  .sources small { grid-column: 1; color: var(--muted); }
+  .sources .error { color: var(--brick); word-break: break-word; }
+  .sources button { grid-row: 1 / span 3; grid-column: 2; align-self: center; }
+  .add { display: flex; gap: .5rem; margin: 0 0 .75rem; }
+  .add input { flex: 1; min-width: 0; padding: .6rem .7rem; border: 1px solid var(--rule); border-radius: 6px; background: #fff; }
+  .btn { padding: .6rem 1rem; border-radius: 6px; border: 1px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; }
+  .btn.quiet { background: transparent; color: var(--ink); border-color: var(--rule); }
+  #preview { margin: 0 0 2rem; min-height: 1.5rem; }
+  #preview ul { margin: .4rem 0 .8rem; padding-left: 1.2rem; color: var(--muted); }
+</style>
+{% endblock %}
+{% block content %}
+<h1>Sources</h1>
+<p class="lede">Where today's posts come from.</p>
+{% if owner %}
+<form class="add" id="add-source">
+  <input id="source-url" name="url" type="url" required aria-label="Blog or feed URL" placeholder="Paste a blog or feed URL" autocomplete="off">
+  <button class="btn">Find feed</button>
+</form>
+<div id="preview" aria-live="polite"></div>
+{% endif %}
+{% if sources %}
+<ul class="sources">
+{% for s in sources %}
+  <li id="source-{{ s.id }}">
+    <strong>{{ s.title }}</strong>
+    <small>{{ s.site_domain }}, {{ "feed" if s.adapter == "rss" else s.adapter }}, {% if s.last_fetched_at %}checked {{ s.last_fetched_at.strftime("%b %-d, %H:%M UTC") }}{% else %}not checked yet{% endif %}</small>
+    {% if owner and s.last_error %}<small class="error">{{ s.last_error }}</small>{% endif %}
+    {% if owner %}<button type="button" class="btn quiet" data-unsubscribe="{{ s.id }}">Unsubscribe</button>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="empty">No sources yet.{% if owner %} Paste a blog URL above to add one.{% endif %}</p>
+{% endif %}
+{% endblock %}

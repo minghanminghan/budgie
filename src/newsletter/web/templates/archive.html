@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Archive{% endblock %}
+{% block head %}
+<style>
+  .issues { list-style: none; padding: 0; margin: 0; }
+  .issues li { display: flex; justify-content: space-between; padding: .7rem 0; border-top: 1px solid var(--rule); }
+  .issues a { font: 500 1.1rem var(--serif); text-decoration: none; }
+  .issues a:hover { text-decoration: underline; }
+  .issues span { color: var(--muted); font-size: .88rem; }
+</style>
+{% endblock %}
+{% block content %}
+<h1>Archive</h1>
+<p class="lede">Every past issue, newest first.</p>
+{% if issues %}
+<ul class="issues">
+{% for d, n in issues %}
+  <li><a href="/issue/{{ d.isoformat() }}"><time datetime="{{ d.isoformat() }}">{{ d.isoformat() }}</time></a>
+      <span>{{ d.strftime("%A") }}, {{ n }} post{{ "" if n == 1 else "s" }}</span></li>
+{% endfor %}
+</ul>
+{% else %}
+<p class="empty">No issues yet.</p>
+{% endif %}
+{% endblock %}

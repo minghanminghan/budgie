@@ -4,3 +4,4 @@ __pycache__/
 *.sqlite*
 data/
 .superpowers/
+.playwright-mcp/

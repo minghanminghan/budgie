@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+{% block head %}
+<style>
+  .login { display: grid; gap: .6rem; max-width: 22rem; }
+  .login input { padding: .6rem .7rem; border: 1px solid var(--rule); border-radius: 6px; background: #fff; }
+  .login button { padding: .6rem 1rem; border-radius: 6px; border: 1px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; }
+  .error { color: var(--brick); margin: 0; }
+</style>
+{% endblock %}
+{% block content %}
+<h1>Log in</h1>
+<p class="lede">Logging in turns on thumbs and source editing.</p>
+<form method="post" action="/login" class="login">
+  <label for="password">Password</label>
+  <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  <button>Log in</button>
+</form>
+{% endblock %}
