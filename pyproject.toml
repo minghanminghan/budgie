@@ -1,0 +1,49 @@
+[project]
+name = "newsletter"
+version = "0.1.0"
+description = "Curated personal tech newsletter"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.12",
+    "sqlalchemy>=2.0",
+    "alembic>=1.14",
+    "pydantic-settings>=2.6",
+    "httpx>=0.28",
+    "feedparser>=6.0",
+    "trafilatura>=2.0",
+    "sentence-transformers>=3.3",
+    "torch>=2.5",
+    "numpy>=2.0",
+    "itsdangerous>=2.2",
+    "resend>=2.5",
+    "apscheduler>=3.10,<4",
+    "pyarrow>=18",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+newsletter = "newsletter.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/newsletter"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
