@@ -109,3 +109,60 @@ def test_published_at_falls_back_to_lastmod():
 def test_default_adapters_try_rss_then_sitemap():
     from newsletter.ingest.base import default_adapters
     assert [a.name for a in default_adapters()] == ["rss", "sitemap"]
+
+
+def _index(children):
+    locs = "".join(f"<sitemap><loc>{c}</loc></sitemap>" for c in children)
+    return f'<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{locs}</sitemapindex>'
+
+
+def _urlset(urls):
+    locs = "".join(f"<url><loc>{u}</loc></url>" for u in urls)
+    return f'<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{locs}</urlset>'
+
+
+def test_discover_stores_only_matching_leaf_sitemaps():
+    web = FakeWeb(site_routes(**{f"{SITE}/sitemap_pages.xml": _urlset([f"{SITE}/careers/a"])}))
+    cfg = SitemapAdapter().discover(f"{SITE}/engineering", web.client())
+    assert cfg.config["sitemaps"] == [f"{SITE}/sitemap_posts.xml"]
+
+
+def test_fetch_walks_only_stored_sitemaps():
+    web = FakeWeb(site_routes())
+    SitemapAdapter().fetch(CONFIG, {"seen": list(POSTS)}, web.client())
+    assert [u for u in web.urls() if "sitemap" in u] == [f"{SITE}/sitemap_posts.xml"]
+
+
+def test_discover_walk_is_bounded_and_tries_relevant_children_first():
+    from newsletter.ingest.sitemap import MAX_DISCOVER_FETCHES
+    junk = [f"{SITE}/sitemap-city-{i}.xml" for i in range(500)]
+    blog = f"{SITE}/sitemap-blog-engineering.xml"
+    routes = {f"{SITE}/robots.txt": f"Sitemap: {SITE}/sitemap.xml\n",
+              f"{SITE}/sitemap.xml": _index(junk + [blog]),
+              blog: _urlset([f"{SITE}/blog/engineering/post-{i}" for i in range(3)])}
+    routes.update({j: _urlset([f"{SITE}/city/{i}"]) for i, j in enumerate(junk)})
+    web = FakeWeb(routes)
+    cfg = SitemapAdapter().discover(f"{SITE}/blog/engineering", web.client())
+    assert cfg.config["sitemaps"] == [blog]
+    assert len([u for u in web.urls() if "sitemap" in u]) <= MAX_DISCOVER_FETCHES
+
+
+def test_fetch_caps_new_urls_per_run():
+    from newsletter.ingest.sitemap import MAX_FETCH_PER_RUN
+    new = [f"{SITE}/engineering/new-{i}" for i in range(MAX_FETCH_PER_RUN + 10)]
+    sitemap = _urlset(POSTS + new)
+    web = FakeWeb(site_routes(**{f"{SITE}/sitemap_posts.xml": sitemap, **{u: page(u[-6:]) for u in new}}))
+    result = SitemapAdapter().fetch(CONFIG, {"seen": list(POSTS)}, web.client())
+    assert len(result.items) == MAX_FETCH_PER_RUN
+    assert len(set(new) - set(result.state["seen"])) == 10  # the rest wait for later runs
+
+
+def test_fetch_marks_old_lastmod_seen_without_fetching():
+    old = f"{SITE}/engineering/ancient"
+    sitemap = fixture("sitemap_posts.xml").replace(
+        b"</urlset>", f"<url><loc>{old}</loc><lastmod>2020-01-01</lastmod></url></urlset>".encode())
+    web = FakeWeb(site_routes(**{f"{SITE}/sitemap_posts.xml": sitemap, old: page("Ancient")}))
+    result = SitemapAdapter().fetch(CONFIG, {"seen": list(POSTS)}, web.client())
+    assert result.items == []
+    assert old in result.state["seen"]
+    assert old not in web.urls()

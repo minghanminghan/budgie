@@ -2,7 +2,7 @@ import gzip
 import logging
 import re
 import xml.etree.ElementTree as ET
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
 
 import httpx
@@ -15,6 +15,9 @@ log = logging.getLogger(__name__)
 
 MAX_DEPTH = 3
 SEEN_CAP = 20000
+MAX_DISCOVER_FETCHES = 40
+MAX_FETCH_PER_RUN = 20
+STALE_AFTER = timedelta(days=7)
 
 
 def _local(tag: str) -> str:
@@ -66,14 +69,19 @@ class SitemapAdapter:
     name = "sitemap"
 
     def _collect(self, sitemaps: list[str], host: str, prefix: str, client: PoliteClient,
-                 strict: bool) -> dict[str, datetime | None]:
-        """Page URLs on `host` strictly under `prefix`, mapped to lastmod."""
+                 strict: bool, budget: int | None = None) -> tuple[dict[str, datetime | None], list[str]]:
+        """Page URLs on `host` strictly under `prefix` (mapped to lastmod), and the
+        leaf sitemaps that held them. `budget` caps sitemap requests; children that
+        look related to `prefix` are tried first, and once matches are found the
+        unrelated children are skipped."""
         found: dict[str, datetime | None] = {}
+        leaves: list[str] = []
         visited: set[str] = set()
-
-        def walk(url: str, depth: int, is_root: bool) -> None:
-            if url in visited or depth > MAX_DEPTH:
-                return
+        stack = [(sm, 1, True) for sm in reversed(sitemaps)]
+        while stack:
+            url, depth, is_root = stack.pop()
+            if url in visited or depth > MAX_DEPTH or (budget is not None and len(visited) >= budget):
+                continue
             visited.add(url)
             try:
                 resp = client.get(url)
@@ -83,17 +91,20 @@ class SitemapAdapter:
                 if strict and is_root:
                     raise
                 log.info("sitemap %s skipped: %s", url, exc)
-                return
+                continue
+            matched = False
             for loc, lastmod in pages:
                 parts = urlsplit(loc)
                 if domain_of(loc) == host and parts.path.startswith(prefix) and parts.path != prefix:
                     found.setdefault(loc, lastmod)
-            for child in children:
-                walk(child, depth + 1, False)
-
-        for sm in sitemaps:
-            walk(sm, 1, True)
-        return found
+                    matched = True
+            if matched:
+                leaves.append(url)
+            ranked = sorted(children, key=lambda c: _relevance(c, prefix), reverse=True)
+            if budget is not None and found:
+                ranked = [c for c in ranked if _relevance(c, prefix) > 0]
+            stack.extend((c, depth + 1, False) for c in reversed(ranked))
+        return found, leaves
 
     def discover(self, url: str, client: PoliteClient) -> SourceConfig | None:
         parts = urlsplit(url)
@@ -104,14 +115,15 @@ class SitemapAdapter:
         prefix = path + "/"
         sitemaps = _robots_sitemaps(site, client) or [f"{site}/sitemap.xml"]
         host = domain_of(url)
-        pages = self._collect(sitemaps, host, prefix, client, strict=False)
+        pages, leaves = self._collect(sitemaps, host, prefix, client, strict=False,
+                                      budget=MAX_DISCOVER_FETCHES)
         if not pages:
             return None
         newest = sorted(pages, key=lambda u: _sort_key(pages[u]), reverse=True)[:3]
         return SourceConfig(
             adapter=self.name,
             config_key=f"sitemap:{site}{prefix}",
-            config={"site": site, "sitemaps": sitemaps, "prefix": prefix},
+            config={"site": site, "sitemaps": leaves, "prefix": prefix},
             title=f"{host}{path}",
             site_domain=host,
             preview_titles=[_slug_title(u) for u in newest],
@@ -120,14 +132,22 @@ class SitemapAdapter:
     def fetch(self, config: dict, state: dict, client: PoliteClient) -> FetchResult:
         first_run = not state
         host = domain_of(config["site"])
-        pages = self._collect(config["sitemaps"], host, config["prefix"], client, strict=True)
+        pages, _ = self._collect(config["sitemaps"], host, config["prefix"], client, strict=True)
         seen = list(state.get("seen", []))
         seen_set = set(seen)
         fresh = sorted((u for u in pages if u not in seen_set),
                        key=lambda u: _sort_key(pages[u]), reverse=True)
-        to_fetch = fresh[:FIRST_RUN_LIMIT] if first_run else fresh
         if first_run:
+            to_fetch = fresh[:FIRST_RUN_LIMIT]
             seen += fresh[FIRST_RUN_LIMIT:]
+        else:
+            # Old URLs that resurface (e.g. a child sitemap that failed before) are
+            # marked seen unfetched; the rest drain at most MAX_FETCH_PER_RUN per run.
+            cutoff = datetime.now(UTC) - STALE_AFTER
+            stale = [u for u in fresh if pages[u] is not None and pages[u] < cutoff]
+            seen += stale
+            stale_set = set(stale)
+            to_fetch = [u for u in fresh if u not in stale_set][:MAX_FETCH_PER_RUN]
 
         items: list[RawItem] = []
         for url in to_fetch:
@@ -147,6 +167,12 @@ class SitemapAdapter:
             ))
             seen.append(url)
         return FetchResult(items=items, state={"seen": list(dict.fromkeys(seen))[-SEEN_CAP:]})
+
+
+def _relevance(sitemap_url: str, prefix: str) -> int:
+    """How much a child sitemap's name looks like the prefix; later segments weigh more."""
+    tokens = set(re.split(r"[^a-z0-9]+", urlsplit(sitemap_url).path.lower()))
+    return sum(i + 1 for i, seg in enumerate(prefix.strip("/").lower().split("/")) if seg in tokens)
 
 
 def _sort_key(lastmod: datetime | None) -> tuple[int, datetime]:
