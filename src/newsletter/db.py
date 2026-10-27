@@ -1,4 +1,6 @@
-from sqlalchemy import Engine, create_engine, event
+from functools import lru_cache
+
+from sqlalchemy import Engine, create_engine, event, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 
@@ -22,3 +24,13 @@ def make_engine(url: str) -> Engine:
 
 def make_sessionmaker(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(engine, expire_on_commit=False)
+
+
+@lru_cache
+def sessionmaker_for(url: str) -> sessionmaker[Session]:
+    """One engine per URL per process, shared by worker jobs and CLI commands."""
+    return make_sessionmaker(make_engine(url))
+
+
+def sqlite_path(url: str) -> str:
+    return make_url(url).database or ""
