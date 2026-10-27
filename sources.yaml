@@ -1,0 +1,17 @@
+sources:
+  # RSS / Atom
+  - https://newsletter.pragmaticengineer.com/feed
+  - https://blog.redwoodresearch.org/feed
+  - https://builders.ramp.com/feed.xml
+  - https://stripe.dev/blog/feed
+  - https://netflixtechblog.com/feed
+  - https://blog.cloudflare.com/rss/
+  - https://tailscale.com/blog/index.xml
+  - https://slack.engineering/feed/
+  - https://engineering.atspotify.com/feed
+  - https://medium.com/feed/pinterest-engineering
+  - https://eng.lyft.com/feed
+  # Sitemap (no feed): the URL path is the prefix filter
+  - https://www.anthropic.com/engineering
+  - https://www.goodfire.com/blog
+  - https://www.uber.com/us/en/blog/engineering
