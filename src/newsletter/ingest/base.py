@@ -50,8 +50,9 @@ def domain_of(url: str) -> str:
 
 def default_adapters() -> list[Adapter]:
     from newsletter.ingest.rss import RssAdapter
+    from newsletter.ingest.sitemap import SitemapAdapter
 
-    return [RssAdapter()]
+    return [RssAdapter(), SitemapAdapter()]
 
 
 def discover_source(url: str, client: PoliteClient, adapters: list[Adapter]) -> SourceConfig | None:
