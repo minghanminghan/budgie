@@ -245,6 +245,12 @@ def test_healthz(web):
     assert web.get("/healthz").json() == {"ok": True}
 
 
+def test_version_is_public(web):
+    from importlib.metadata import version
+    # no login: deploy/deploy.sh checks it after a restart
+    assert web.get("/api/version").json() == {"version": version("newsletter")}
+
+
 def test_missing_secrets_refuse_to_start(engine):
     with pytest.raises(ValueError):
         create_app(settings=Settings(), session_factory=sessionmaker(engine))

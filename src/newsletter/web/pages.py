@@ -1,5 +1,6 @@
 import math
 from datetime import date, timedelta
+from importlib.metadata import version
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -147,3 +148,9 @@ def click(token: str, request: Request, session: Session = Depends(get_db)):
 @router.get("/healthz")
 def healthz():
     return {"ok": True}
+
+
+@router.get("/api/version")
+def app_version():
+    # public, unlike the rest of /api: deploy/deploy.sh checks it after a restart
+    return {"version": version("newsletter")}
