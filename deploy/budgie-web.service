@@ -1,0 +1,24 @@
+# Template: deploy/setup.sh fills in @PORT@ and installs it to /etc/systemd/system.
+[Unit]
+Description=budgie newsletter web app (uvicorn)
+After=network.target
+ConditionPathExists=/opt/budgie/current/.venv/bin/uvicorn
+
+[Service]
+User=budgie
+Group=budgie
+WorkingDirectory=/opt/budgie/current
+EnvironmentFile=/etc/budgie/paths.env
+EnvironmentFile=/etc/budgie/budgie.env
+Environment=PORT=@PORT@
+ExecStart=/opt/budgie/current/.venv/bin/uvicorn newsletter.web.app:create_app --factory --host 127.0.0.1 --port ${PORT}
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/budgie
+
+[Install]
+WantedBy=multi-user.target
