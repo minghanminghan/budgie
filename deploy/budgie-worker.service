@@ -1,0 +1,25 @@
+# Installed to /etc/systemd/system by deploy/setup.sh.
+# Hourly ingest + embed, 06:30 issue build, 08:00 email, 03:15 backup (see newsletter.worker).
+[Unit]
+Description=budgie newsletter worker (scheduler)
+After=network.target budgie-web.service
+ConditionPathExists=/opt/budgie/current/.venv/bin/python
+
+[Service]
+User=budgie
+Group=budgie
+WorkingDirectory=/opt/budgie/current
+EnvironmentFile=/etc/budgie/paths.env
+EnvironmentFile=/etc/budgie/budgie.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/budgie/current/.venv/bin/python -m newsletter.worker
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=full
+ReadWritePaths=/var/lib/budgie /var/backups/budgie
+
+[Install]
+WantedBy=multi-user.target

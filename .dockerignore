@@ -1,8 +1,0 @@
-.git
-.venv
-.env
-.superpowers
-.playwright-mcp
-data
-**/__pycache__
-*.sqlite*

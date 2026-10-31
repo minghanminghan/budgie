@@ -1,0 +1,28 @@
+# Installed to /etc/systemd/system by deploy/setup.sh.
+# Started by deploy/deploy.sh: backs up the DB (if there is one), then migrates it with the new build at /opt/budgie/next.
+[Unit]
+Description=budgie pre-deploy DB backup and migration
+
+[Service]
+Type=oneshot
+User=budgie
+Group=budgie
+WorkingDirectory=/opt/budgie/next
+EnvironmentFile=/etc/budgie/paths.env
+EnvironmentFile=/etc/budgie/budgie.env
+# backup_db would create an empty DB on the first deploy, so skip it when there is none yet.
+ExecStart=/bin/sh -c 'test ! -e /var/lib/budgie/newsletter.sqlite || exec /opt/budgie/next/.venv/bin/newsletter backup'
+ExecStart=/opt/budgie/next/.venv/bin/alembic upgrade head
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/budgie /var/backups/budgie
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
