@@ -6,55 +6,54 @@ Spec: `docs/design.md`. Deferred work: `TODO.md`.
 
 ## How it runs
 
-`docker compose` starts three containers that share one volume (`data:/data`):
+On the mini PC, the same way as sparrow (`SPAR-15`): systemd services run the current release in `/opt/budgie/current`.
 
-- `web`: the FastAPI app (pages + API). It runs `alembic upgrade head` on start.
-- `worker`: hourly ingest + embed, 06:30 issue build, 08:00 email, 03:15 backup (7 kept).
-- `tailscale`: joins your tailnet and serves `web` to the public internet with Funnel at `https://newsletter.<tailnet>.ts.net`. No DNS changes.
+- `budgie-web`: the FastAPI app (pages + API) on `127.0.0.1:3418`. Caddy serves it to the tailnet only at `https://budgie.andrewminghanjiang.com`, with sparrow's `deploy/caddy/setup.sh`.
+- `budgie-worker`: hourly ingest + embed, 06:30 issue build, 08:00 email, 03:15 backup (7 kept, in `/var/backups/budgie`).
+- `budgie-predeploy`: run by each deploy. It backs up the DB, then runs `alembic upgrade head`.
 
-## Deploy (Ubuntu server on your tailnet)
+Data is in `/var/lib/budgie` (the SQLite DB and the embedding model). Secrets are in `/etc/budgie/budgie.env`.
 
-1. **Make a Tailscale auth key.** Admin console → Settings → Keys → Generate auth key. Reusable is fine. Copy it.
-2. **Allow Funnel for the node.** In the tailnet policy file, add a `funnel` node attribute, for example:
+Every push to `main` runs the tests. semantic-release tags a version from the conventional commits, and the self-hosted runner on the mini PC deploys it (`deploy/deploy.sh`). Pull requests check the title and run the tests.
 
-   ```json
-   "nodeAttrs": [
-     { "target": ["autogroup:member"], "attr": ["funnel"] }
-   ]
-   ```
+## Deploy (mini PC)
 
-   Also make sure MagicDNS and HTTPS certificates are on (Admin console → DNS).
-3. **Configure.**
+You need sparrow already deployed on the mini PC (this uses its Caddy script), and `uv` installed system-wide:
+`curl -LsSf https://astral.sh/uv/install.sh | sudo env UV_INSTALL_DIR=/usr/local/bin sh`.
+
+1. **Push the repo to GitHub** and protect `main`, as for sparrow.
+2. **Set up the mini PC.** From a checkout of this repo on the mini PC:
 
    ```sh
-   cp .env.example .env
-   docker compose build
-   docker compose run --rm --no-deps web newsletter hash-password
+   sudo deploy/setup.sh
    ```
 
-   Put the printed hash in `APP_PASSWORD_HASH` **inside single quotes** (it contains `$`). Fill in `TS_AUTHKEY`, the three random secrets, and the Resend values.
-4. **Start.**
+   It is safe to re-run. It asks for the Vercel token only if sparrow's Caddy setup has none.
+3. **Fill in `/etc/budgie/budgie.env`** (`sudo -e /etc/budgie/budgie.env`). Make the password hash on your laptop with `uv run newsletter hash-password`. Put it in `APP_PASSWORD_HASH` **inside single quotes** (it contains `$`). Fill in the three random secrets and the Resend values. The app does not start without them.
+4. **Install the runner** (one time):
 
    ```sh
-   docker compose up -d
-   docker compose logs -f tailscale   # wait for the node to come up
+   gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token -q .token   # on your laptop
+   sudo RUNNER_TOKEN=<token> REPO_URL=https://github.com/<owner>/<repo> deploy/runner.sh
    ```
 
-5. **Set `BASE_URL`.** The node's name is `https://newsletter.<tailnet>.ts.net` (see the Tailscale admin console). Put it in `.env` as `BASE_URL`, then run `docker compose up -d` again.
+5. **First deploy.** Push to `main`, or re-run the deploy job of the latest release workflow run.
 6. **Seed sources.**
 
    ```sh
-   docker compose exec web newsletter seed sources.yaml
-   docker compose exec web newsletter ingest     # optional: fetch now instead of at the top of the hour
+   sudo budgie seed sources.yaml
+   sudo budgie ingest     # optional: fetch now instead of at the top of the hour
    ```
 
-7. Open `BASE_URL`, log in, and check `/sources`.
+7. Open `https://budgie.andrewminghanjiang.com` from a device on your tailnet, log in, and check `/sources`.
+
+Rollback: `sudo ln -sfn /opt/budgie/releases/<old> /opt/budgie/current && sudo systemctl restart budgie-web budgie-worker`. If a migration changed the DB, restore a backup first (below).
 
 Phone share-sheet setup: `docs/share-shortcut.md`.
 
 ## Commands
 
-Run inside a container: `docker compose exec web newsletter <command>`.
+On the mini PC: `sudo budgie <command>` (the newsletter CLI as the `budgie` user, with the services' settings, from the current release). On your laptop: `uv run newsletter <command>`.
 
 | Command | What it does |
 |---|---|
@@ -85,13 +84,14 @@ Run inside a container: `docker compose exec web newsletter <command>`.
 
 ## Restore from a backup
 
-Backups are in the `data` volume at `/data/backups/newsletter-YYYY-MM-DD.sqlite`.
+Backups are in `/var/backups/budgie/newsletter-YYYY-MM-DD.sqlite`.
 
 ```sh
-docker compose stop web worker
-docker compose run --rm --no-deps web sh -c \
-  'ls /data/backups && cp /data/backups/newsletter-YYYY-MM-DD.sqlite /data/newsletter.sqlite && rm -f /data/newsletter.sqlite-wal /data/newsletter.sqlite-shm'
-docker compose start web worker
+sudo systemctl stop budgie-web budgie-worker
+ls /var/backups/budgie
+sudo install -o budgie -g budgie -m 0640 /var/backups/budgie/newsletter-YYYY-MM-DD.sqlite /var/lib/budgie/newsletter.sqlite
+sudo rm -f /var/lib/budgie/newsletter.sqlite-wal /var/lib/budgie/newsletter.sqlite-shm
+sudo systemctl start budgie-web budgie-worker
 ```
 
 ## Develop

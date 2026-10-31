@@ -2,7 +2,7 @@
 
 The shortcut sends the shared URL to `POST <BASE_URL>/api/sources` with your API token. The server finds the feed (or sitemap) and subscribes. The shortcut shows the reply, for example "Subscribed to Netflix TechBlog" or "No feed found".
 
-You need `BASE_URL` and `API_TOKEN` from the server's `.env`.
+You need `BASE_URL` and `API_TOKEN` from `/etc/budgie/budgie.env` on the mini PC. The phone must be on your tailnet: the server is tailnet-only.
 
 ## iPhone / iPad (Shortcuts app)
 
@@ -35,4 +35,4 @@ You need `BASE_URL` and `API_TOKEN` from the server's `.env`.
 
 ## Keep the token safe
 
-The token can add and remove sources. If a phone is lost, set a new `API_TOKEN` in `.env` and run `docker compose up -d`.
+The token can add and remove sources. If a phone is lost, set a new `API_TOKEN` in `/etc/budgie/budgie.env` and run `sudo systemctl restart budgie-web`.

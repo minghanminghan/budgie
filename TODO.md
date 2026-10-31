@@ -2,12 +2,11 @@
 
 ## Launch (do first)
 
-- **Deploy** — follow `README.md`: fill `.env` from `.env.example` (`TS_AUTHKEY`, Resend key, secrets; `APP_PASSWORD_HASH` from `newsletter hash-password`, in single quotes), `docker compose up -d`, `docker compose exec web newsletter seed sources.yaml`, set `BASE_URL` to the `ts.net` URL.
-- Open decisions:
-  - **Login limiter** — one global limit (10 failures/hour) lets a stranger block new logins for 1h; the cookie and API token still work. Keep, or limit per client IP (check how Funnel forwards the visitor's address first).
+- **Deploy** — follow `README.md` "Deploy (mini PC)": push to GitHub, `sudo deploy/setup.sh`, fill `/etc/budgie/budgie.env`, `deploy/runner.sh`, push to `main`, `sudo budgie seed sources.yaml`.
 
 ## v1 known gaps (from the final review)
 
+- Login limiter is one global limit (10 failures/hour), kept for v1: someone on the tailnet can block new logins for 1h, but the cookie and API token still work. Since the server is tailnet-only (2026-10-31), only tailnet devices can reach the login.
 - Title + author dedup has no time window, so a recurring title ("Monthly roundup") merges with the first one forever.
 - No private-IP guard on URLs followed from feeds and sitemaps.
 - No catch-up email if the worker restarts after 08:00 ET.
