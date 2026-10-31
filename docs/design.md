@@ -38,22 +38,22 @@ One user (the owner). Success = the ideas on the page are interesting. Failure =
 
 ## Constraints
 
-- Python, Dockerized, on the owner's Ubuntu server.
-- The Ubuntu server sits on the owner's **Tailscale tailnet**. All networking uses Tailscale. The app is exposed publicly with **Tailscale Funnel** at the server's `https://<machine>.<tailnet>.ts.net` name (Funnel does not serve custom domains). The owner's Vercel/Next.js domain is not used for hosting; it is only the Resend sending domain.
+- Python on the owner's Ubuntu mini PC, deployed the same way as sparrow (systemd + a self-hosted GitHub runner; changed from Docker on 2026-10-31).
+- The Ubuntu server sits on the owner's **Tailscale tailnet**. All networking uses Tailscale. The app is served **to the tailnet only** at `https://budgie.andrewminghanjiang.com` by Caddy on the tailscale IPs (DNS on Vercel, certificates by DNS-01), like sparrow. It was public through Tailscale Funnel until 2026-10-31. The domain is also the Resend sending domain.
 - Email via **Resend**, already set up on the owner's domain.
 - Embeddings: **`intfloat/e5-base-v2`**, run locally on CPU (768-dim, 512-token limit, document text must be prefixed with `passage: `).
 
 ## Architecture
 
-`docker compose` with three containers sharing one data volume:
+Three systemd services on the mini PC, run as the `budgie` user from `/opt/budgie/current`:
 
-| Container | Job |
+| Service | Job |
 |---|---|
-| `web` | FastAPI app: pages + API |
-| `worker` | APScheduler: hourly ingest, issue build, email |
-| `tailscale` | `tailscale/tailscale` sidecar; Funnel (HTTPS, public) to `web` via `TS_SERVE_CONFIG` |
+| `budgie-web` | FastAPI app: pages + API, on `127.0.0.1`; Caddy proxies the tailnet to it |
+| `budgie-worker` | APScheduler: hourly ingest, issue build, email, backup |
+| `budgie-predeploy` | One-shot, per deploy: DB backup, then `alembic upgrade head` |
 
-Storage: one SQLite file (WAL mode) on the shared volume. SQLAlchemy models, Alembic migrations. The embedding model cache also lives on the volume.
+Storage: one SQLite file (WAL mode) in `/var/lib/budgie`. SQLAlchemy models, Alembic migrations. The embedding model cache also lives there.
 
 Libraries: `feedparser`, `httpx`, `trafilatura` (main text, author, date, and sitemap reading), `sentence-transformers`, `scikit-learn`, `resend`.
 
@@ -184,12 +184,12 @@ Resend, sent at 8:00am ET to the owner.
 
 ## Config (env vars)
 
-`BASE_URL`, `TS_AUTHKEY`, `APP_PASSWORD_HASH`, `SESSION_SECRET`, `LINK_SIGNING_SECRET`, `API_TOKEN`, `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_TO`, `TZ=America/New_York`.
+`BASE_URL`, `APP_PASSWORD_HASH`, `SESSION_SECRET`, `LINK_SIGNING_SECRET`, `API_TOKEN`, `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_TO`, `TZ=America/New_York`.
 
 ## Deployment
 
-- No DNS changes. The `tailscale` sidecar joins the tailnet with an auth key (`TS_AUTHKEY`) and Funnels `web` on 443. Funnel must be allowed for the node in the tailnet policy file. `BASE_URL` = the node's `ts.net` URL.
-- `docker compose up -d` on the server. Volumes hold SQLite, model cache, and Tailscale state.
+- `deploy/setup.sh` (one time, safe to re-run) creates the users, dirs, units and `/etc/budgie/*.env`, and runs sparrow's Caddy script for `budgie.andrewminghanjiang.com`. `BASE_URL` = that URL.
+- CI/CD as in sparrow: `pr.yml` checks PR titles and runs the tests; `release.yml` runs the tests on `main`, semantic-release tags a version, and the self-hosted runner (label `budgie`) runs `deploy/deploy.sh`. It builds the release with `uv sync`, runs `budgie-predeploy`, switches `/opt/budgie/current`, restarts both services, checks `/api/version`, and keeps 3 releases.
 - Nightly SQLite backup (`.backup`), kept 7 days, on the same server. Off-server backup is in `TODO.md`.
 
 ## Initial sources
@@ -215,11 +215,11 @@ Seeded from a `sources.yaml` file. Feed URLs below were checked on 2026-10-27.
 
 ## Decided by the owner
 
-Page + one-line email (not email-only). 7am page / 8am email ET. 15–20 posts max; short issues accepted. Rules-only ranker in v1; learned model is the next phase with no thumbs gate. Tailscale for all networking. Password auth; reads public, writes gated. No LLMs. No points. No story groups. Sitemap adapter as its own extensible layer. Aggregators, discovery, and ranker follow-ups deferred to `TODO.md`. `e5-base-v2` embeddings. Docker + Python on Ubuntu. Resend.
+Page + one-line email (not email-only). 7am page / 8am email ET. 15–20 posts max; short issues accepted. Rules-only ranker in v1; learned model is the next phase with no thumbs gate. Tailscale for all networking. Password auth; reads open to the tailnet (public until 2026-10-31), writes gated. No LLMs. No points. No story groups. Sitemap adapter as its own extensible layer. Aggregators, discovery, and ranker follow-ups deferred to `TODO.md`. `e5-base-v2` embeddings. Python on Ubuntu, deployed like sparrow (was Docker). Resend.
 
 ## Calls made by Claude (owner to check)
 
-FastAPI + Jinja + plain JS; SQLite; APScheduler worker; Tailscale Funnel sidecar on the `ts.net` name (public reads need Funnel, and Funnel can't use a custom domain); logistic regression for the next phase; no ranker quality cutoff; teaser flag; 7-day candidate window; max 3 per source; unlabeled wildcards; impressions written at freeze time; clicks logged only when logged in; newest-5 backfill; shortcut subscribes without a confirm step; nightly backups.
+FastAPI + Jinja + plain JS; SQLite; APScheduler worker; tailnet-only behind Caddy on `budgie.andrewminghanjiang.com` (was a public Tailscale Funnel sidecar); logistic regression for the next phase; no ranker quality cutoff; teaser flag; 7-day candidate window; max 3 per source; unlabeled wildcards; impressions written at freeze time; clicks logged only when logged in; newest-5 backfill; shortcut subscribes without a confirm step; nightly backups.
 
 ## Left to the builder
 
