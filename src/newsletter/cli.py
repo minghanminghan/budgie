@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import random
 import sys
 from datetime import UTC, date, datetime
@@ -21,6 +22,7 @@ from newsletter.ingest.sources import seed_from_yaml
 from newsletter.models import Source
 from newsletter.rank.issue import build_issue
 from newsletter.rank.rules import RulesRanker
+from newsletter.triage import SPARROW_PROJECT, create_ticket, pending_ticket, probe, track_pending
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -35,6 +37,12 @@ def _parser() -> argparse.ArgumentParser:
     sub.add_parser("backup", help="write a SQLite backup now")
     sub.add_parser("export", help="write tables to Parquet").add_argument("out_dir", type=Path)
     sub.add_parser("hash-password", help="print a hash for APP_PASSWORD_HASH")
+    t = sub.add_parser("ticket", help="file a Sparrow task for each URL no adapter can read, and track it as pending")
+    t.add_argument("urls", nargs="+")
+    t.add_argument("--sources", type=Path, default=Path("sources.yaml"))
+    t.add_argument("--project", default=SPARROW_PROJECT, help="Sparrow project key")
+    t.add_argument("--parent", help="Sparrow parent task key, in the same project (e.g. BUDGIE-2)")
+    t.add_argument("--sparrow", default=os.environ.get("SPARROW_BIN", "sparrow"), help="path to the sparrow CLI")
     return p
 
 
@@ -48,6 +56,8 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(hash_password(pw))
         return 0
+    if args.cmd == "ticket":
+        return _ticket(args)
 
     settings = get_settings()
     now = datetime.now(UTC)
@@ -94,3 +104,19 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+def _ticket(args) -> int:
+    client, adapters = PoliteClient(), default_adapters()
+    for url in args.urls:
+        if (existing := pending_ticket(args.sources, url)) is not None:
+            print(f"skip    {url} (already pending: {existing})")
+            continue
+        result = probe(url, client, adapters)
+        if result.found is not None:
+            print(f"found   {url} -> {result.found.adapter}: {result.found.title} (not ticketed; add it to sources)")
+            continue
+        key = create_ticket(result, args.project, args.sparrow, args.parent)
+        track_pending(args.sources, url, key)
+        print(f"ticket  {url} -> {key} (added to pending in {args.sources})")
+    return 0
