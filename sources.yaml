@@ -12,6 +12,10 @@ sources:
   - https://medium.com/feed/pinterest-engineering
   - https://eng.lyft.com/feed
   # Sitemap (no feed): the URL path is the prefix filter
-  - https://www.anthropic.com/engineering
   - https://www.goodfire.com/blog
-  - https://www.uber.com/us/en/blog/engineering
+  # Listing page: post links read from the blog's index page. Pinned because
+  # Anthropic's posts live under /research/ and Uber's sitemap gives category pages.
+  - url: https://www.anthropic.com/engineering
+    adapter: listing
+  - url: https://www.uber.com/us/en/blog/engineering/
+    adapter: listing

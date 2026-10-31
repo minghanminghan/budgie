@@ -38,7 +38,7 @@ class FetchResult:
 class Adapter(Protocol):
     name: str
 
-    def discover(self, url: str, client: PoliteClient) -> SourceConfig | None: ...
+    def discover(self, url: str, client: PoliteClient, **options) -> SourceConfig | None: ...
 
     def fetch(self, config: dict, state: dict, client: PoliteClient) -> FetchResult: ...
 
@@ -56,10 +56,12 @@ def default_adapters() -> list[Adapter]:
     return [RssAdapter(), SitemapAdapter(), ListingAdapter()]
 
 
-def discover_source(url: str, client: PoliteClient, adapters: list[Adapter]) -> SourceConfig | None:
-    """Try each adapter in order; the first one that can read `url` wins."""
+def discover_source(url: str, client: PoliteClient, adapters: list[Adapter],
+                    options: dict | None = None) -> SourceConfig | None:
+    """Try each adapter in order; the first one that can read `url` wins.
+    `options` are adapter-specific keyword arguments to `discover`."""
     for adapter in adapters:
-        found = adapter.discover(url, client)
+        found = adapter.discover(url, client, **(options or {}))
         if found is not None:
             return found
     return None

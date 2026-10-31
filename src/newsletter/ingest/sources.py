@@ -13,23 +13,31 @@ from newsletter.models import Source
 log = logging.getLogger(__name__)
 
 
-def preview(url: str, client, adapters: list[Adapter]) -> SourceConfig | None:
+def preview(url: str, client, adapters: list[Adapter], adapter: str | None = None,
+            options: dict | None = None) -> SourceConfig | None:
+    """`adapter` pins discovery to one adapter by name instead of trying each in order.
+    `options` (e.g. a listing `include` rule) are for that adapter, so they need the pin."""
+    if options and adapter is None:
+        raise ValueError(f"options {sorted(options)} need a pinned adapter")
     url = url.strip()
     if urlsplit(url).scheme not in ("http", "https"):
         return None
-    return discover_source(url, client, adapters)
+    if adapter is not None:
+        adapters = [a for a in adapters if a.name == adapter]
+    return discover_source(url, client, adapters, options)
 
 
 def subscribe(session: Session, url: str, client, adapters: list[Adapter],
-              now: datetime) -> Source | None:
+              now: datetime, adapter: str | None = None, options: dict | None = None) -> Source | None:
     """Discover and subscribe. The first ingest happens on the next hourly run."""
-    cfg = preview(url, client, adapters)
+    cfg = preview(url, client, adapters, adapter, options)
     if cfg is None:
         return None
     source = session.scalar(select(Source).where(Source.config_key == cfg.config_key))
     if source is not None:
         source.status = "active"
         source.unsubscribed_at = None
+        source.config = cfg.config  # picks up an edited rule on re-seed
     else:
         source = Source(
             adapter=cfg.adapter,
@@ -60,11 +68,17 @@ def unsubscribe(session: Session, source_id: int, now: datetime) -> bool:
 
 def seed_from_yaml(session: Session, path: Path, client, adapters: list[Adapter],
                    now: datetime) -> list[tuple[str, Source | None]]:
-    urls = (yaml.safe_load(Path(path).read_text()) or {}).get("sources") or []
+    """Each entry is a URL, or `{url, adapter, ...}`: the other keys are options for that
+    adapter, except `ticket` (a Sparrow task id, for people). The `pending` list is not seeded."""
+    entries = (yaml.safe_load(Path(path).read_text()) or {}).get("sources") or []
     out: list[tuple[str, Source | None]] = []
-    for url in urls:
+    for entry in entries:
+        if not isinstance(entry, dict):
+            entry = {"url": entry}
+        options = {k: v for k, v in entry.items() if k not in ("url", "adapter", "ticket")}
+        url = entry["url"]
         try:
-            out.append((url, subscribe(session, url, client, adapters, now)))
+            out.append((url, subscribe(session, url, client, adapters, now, entry.get("adapter"), options)))
         except Exception:
             session.rollback()
             log.exception("seed failed for %s", url)
