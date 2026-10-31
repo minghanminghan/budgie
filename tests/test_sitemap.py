@@ -106,9 +106,9 @@ def test_published_at_falls_back_to_lastmod():
     assert item.published_at == datetime(2026, 10, 8, 8, tzinfo=UTC)
 
 
-def test_default_adapters_try_rss_then_sitemap():
+def test_default_adapters_try_rss_then_sitemap_then_listing():
     from newsletter.ingest.base import default_adapters
-    assert [a.name for a in default_adapters()] == ["rss", "sitemap"]
+    assert [a.name for a in default_adapters()] == ["rss", "sitemap", "listing"]
 
 
 def _index(children):
