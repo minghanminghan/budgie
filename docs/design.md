@@ -1,6 +1,6 @@
 # Curated Personal Newsletter — Design
 
-Status: draft, 2026-10-27 · Tracks `sparrow` item 18
+Status: draft, 2026-10-27 · Tracks Sparrow task `SPAR-18`; feed tickets go to project `BUDGIE`
 
 ## Intent
 
@@ -78,6 +78,8 @@ A candidate counts only if it parses as a feed with ≥1 entry (engineering.fyi'
 
 **Sitemap adapter.** Used when no feed is found. `discover` reads `robots.txt` and `/sitemap.xml`, follows sitemap indexes, and uses the **pasted URL's path as the prefix filter** (e.g. `https://www.uber.com/us/en/blog/engineering` → keep URLs under `/us/en/blog/engineering/`). `fetch` diffs the current URL set against the seen set; new URLs become raw posts whose page is then fetched for title/author/date/text.
 
+**Listing adapter.** Used when neither a feed nor the sitemap works. `discover` fetches the pasted URL (the blog index) and reads its post links: links in `nav`/`header`/`footer`/menus, to other hosts, to the index itself or its parents, to pagination, or to the same index in another locale are dropped; if any links sit in `<article>` cards, only those are kept. Each post's date comes from its card on the index (the post page is the fallback). `fetch` diffs the links against the seen set. It sees only the first page of the index, so it is for blogs that post less than a page between hourly runs. `sources.yaml` can pin an adapter (`{url, adapter}`) when an earlier adapter would match the wrong pages, and give the listing adapter a per-site `include` regex on link paths. URLs no adapter can read go to a `pending:` list with a Sparrow ticket (`newsletter ticket`; see the README).
+
 ### Fetching rules
 
 - Send a normal browser `User-Agent`. Netflix, Lyft, Pinterest (Medium), and Uber return 403/406 to default clients.
@@ -106,7 +108,7 @@ Store only the **newest 5** posts as items. Record the rest as seen (adapter sta
 
 Append-only where possible. Tables:
 
-- **`sources`** — `id, adapter (rss|sitemap), input_url, config (JSON: feed_url / sitemap_url / path_prefix …), title, site_domain, state (JSON, adapter-owned), status (active|unsubscribed), created_at, unsubscribed_at, last_fetched_at, last_error`. Unsubscribe is soft; history is kept.
+- **`sources`** — `id, adapter (rss|sitemap|listing), input_url, config (JSON: feed_url / sitemap_url / path_prefix …), title, site_domain, state (JSON, adapter-owned), status (active|unsubscribed), created_at, unsubscribed_at, last_fetched_at, last_error`. Unsubscribe is soft; history is kept.
 - **`items`** — `id, canonical_url (unique), url, title, author, site_domain, published_at (nullable), first_seen_at, text, word_count, dedup_key`.
 - **`item_sources`** — `item_id, source_id, seen_at, raw_url`. Every source that delivered an item.
 - **`embeddings`** — `item_id, model, dim, vector (blob), created_at`. PK `(item_id, model)`.
@@ -207,9 +209,9 @@ Seeded from a `sources.yaml` file. Feed URLs below were checked on 2026-10-27.
 | Spotify Engineering | rss | `https://engineering.atspotify.com/feed` |
 | Pinterest Engineering | rss | `https://medium.com/feed/pinterest-engineering` |
 | Lyft Engineering | rss | `https://eng.lyft.com/feed` |
-| Anthropic Engineering | sitemap | `https://www.anthropic.com` prefix `/engineering/` |
+| Anthropic Engineering | listing | `https://www.anthropic.com/engineering` (posts live under `/research/`, so the sitemap prefix finds none) |
 | Goodfire | sitemap | `https://www.goodfire.com` prefix `/blog/` |
-| Uber Engineering | sitemap | `https://www.uber.com` prefix `/us/en/blog/engineering/` (verify the prefix matches Uber's sitemap URLs) |
+| Uber Engineering | listing | `https://www.uber.com/us/en/blog/engineering/` (the sitemap prefix finds only category pages) |
 
 ## Decided by the owner
 

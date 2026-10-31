@@ -58,7 +58,7 @@ Run inside a container: `docker compose exec web newsletter <command>`.
 
 | Command | What it does |
 |---|---|
-| `seed PATH` | Subscribe to every URL in a YAML file (`sources: [url, ...]`) |
+| `seed PATH` | Subscribe to every URL in a YAML file (`sources: [url, ...]`; an entry can also be `{url, adapter, include, ticket}`) |
 | `ingest` | Fetch new posts from all active sources |
 | `embed` | Embed posts that have no vector yet |
 | `build [--date YYYY-MM-DD]` | Build an issue (safe to re-run; replaces a failed one) |
@@ -66,6 +66,22 @@ Run inside a container: `docker compose exec web newsletter <command>`.
 | `backup` | Write a backup now |
 | `export OUT_DIR` | Write `items`, `impressions`, `events`, `embeddings`, `sources` to Parquet |
 | `hash-password` | Print a password hash for `APP_PASSWORD_HASH` |
+| `ticket URL... [--parent ID]` | Run on your laptop (`uv run newsletter ticket URL`). For each URL no adapter can read, file a Sparrow task with a probe report (in project `BUDGIE` by default; `--project`, `--parent BUDGIE-N`) and add the URL to `pending:` in `sources.yaml` |
+
+## When no feed is found
+
+1. Run `uv run newsletter ticket URL` on your laptop (it needs the `sparrow` CLI; set `SPARROW_BIN` if it is not on `PATH`). Use the URLs from `seed`'s `FAILED` lines or from a "no feed found" in the web UI.
+2. The Sparrow task lists what each adapter found and the page's own links. The URL moves to `pending:` in `sources.yaml`, which `seed` skips.
+3. Find a regex that only post links match. Move the entry to `sources:` with the rule, and keep the ticket:
+
+   ```yaml
+   - url: https://example.com/blog
+     adapter: listing
+     include: ^/blog/\d{4}/   # regex on the link path
+     ticket: BUDGIE-7
+   ```
+
+4. Re-run `seed` (it updates the rule on an existing source), check `/sources`, and close the task with `sparrow update BUDGIE-7 --status done`.
 
 ## Restore from a backup
 
