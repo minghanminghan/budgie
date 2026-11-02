@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from newsletter.auth import SESSION_COOKIE, hash_password, make_session_token, sign_link
 from newsletter.clock import ET
 from newsletter.config import Settings
-from newsletter.models import Event, Impression, Issue, Source
+from newsletter.models import Event, Impression, Issue, Item, Source
 from newsletter.web.app import create_app
 from tests.fakes import FakeAdapter
 
@@ -79,6 +79,14 @@ def test_index_shows_visible_issue_titles(web, world):
     assert "Monday post 1" not in r.text
     assert "Fake Blog" in r.text and "Jane Doe" in r.text
     assert "5 min" in r.text  # ceil(1000 / 230)
+    assert "subscribers only" not in r.text
+
+
+def test_index_marks_subscriber_only_posts(web, world, session):
+    item = session.get(Item, world["imps"][("Tuesday", 1)].item_id)
+    item.is_teaser = True
+    session.commit()
+    assert web.get("/").text.count("subscribers only") == 1
 
 
 def test_index_before_go_live_shows_previous_issue(web, world, clock):

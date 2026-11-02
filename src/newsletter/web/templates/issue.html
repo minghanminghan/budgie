@@ -33,7 +33,7 @@
   {% for p in posts %}
     <li class="post">
       <h2><a href="{{ p.href }}">{{ p.title }}</a></h2>
-      <p class="meta">{{ p.source }}{% if p.author %}, {{ p.author }}{% endif %}, {{ p.minutes }} min</p>
+      <p class="meta">{{ p.source }}{% if p.author %}, {{ p.author }}{% endif %}, {{ p.minutes }} min{% if p.is_teaser %}, subscribers only{% endif %}</p>
       <div class="thumbs">
         <button type="button" class="thumb" data-impression="{{ p.impression_id }}" data-value="up" aria-label="More like this" aria-pressed="{{ 'true' if p.thumb == 'up' else 'false' }}"{% if not owner %} disabled{% endif %}>👍</button>
         <button type="button" class="thumb" data-impression="{{ p.impression_id }}" data-value="down" aria-label="Less like this" aria-pressed="{{ 'true' if p.thumb == 'down' else 'false' }}"{% if not owner %} disabled{% endif %}>👎</button>

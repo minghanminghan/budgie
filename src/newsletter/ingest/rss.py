@@ -35,6 +35,17 @@ def _html_to_text(html: str) -> str:
     return trafilatura.html2txt(f"<html><body>{html}</body></html>")
 
 
+def _is_paid_preview(html: str, link: str) -> bool:
+    """Substack paid posts: the feed has a preview that ends with a "Read more" link to the post."""
+    if not html.strip():
+        return False
+    try:
+        links = lxml.html.fragment_fromstring(html, create_parent="div").xpath("//a")
+    except (ValueError, lxml.etree.ParserError):
+        return False
+    return bool(links) and links[-1].text_content().strip() == "Read more" and links[-1].get("href") == link
+
+
 class RssAdapter:
     name = "rss"
 
@@ -157,7 +168,7 @@ class RssAdapter:
             author=entry.get("author") or None,
             published_at=_entry_date(entry),
             text=text,
-            is_teaser=looks_like_teaser(html, text),
+            is_teaser=_is_paid_preview(html, entry.link) or looks_like_teaser(html, text),
         )
         if word_count(text) >= FULL_TEXT_MIN_WORDS:
             return item
@@ -171,5 +182,5 @@ class RssAdapter:
         item.author = item.author or ex.author
         item.published_at = item.published_at or ex.published_at
         item.canonical_link = ex.canonical_link
-        item.is_teaser = ex.is_teaser
+        item.is_teaser = item.is_teaser or ex.is_teaser
         return item
