@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # One-time (and safe to re-run) mini PC setup for budgie, the newsletter. Run as root from a repo checkout:
-#   sudo [PORT=3418] [CADDY_SETUP=/opt/sparrow/current/deploy/caddy/setup.sh] deploy/setup.sh
+#   sudo [PORT=3419] [CADDY_SETUP=/opt/sparrow/current/deploy/caddy/setup.sh] deploy/setup.sh
 # Creates the budgie and budgie-runner users and dirs, /etc/budgie/{paths,budgie}.env, budgie-web.service on
 # 127.0.0.1:$PORT, budgie-worker.service and budgie-predeploy.service, the `budgie` CLI wrapper, lets
 # budgie-runner deploy (see deploy/runner.sh), and serves https://budgie.<domain> to the tailnet with
-# sparrow's Caddy script.
+# sparrow's Caddy script. Re-run it after the first deploy: the Caddy step needs the app answering.
 set -euo pipefail
 
 UNIT=/etc/systemd/system/budgie-web.service
@@ -27,7 +27,7 @@ done
 
 # Keep the port from a previous run unless PORT is given.
 PORT=${PORT:-$(sed -n 's/^Environment=PORT=//p' "$UNIT" 2>/dev/null || true)}
-PORT=${PORT:-3418}
+PORT=${PORT:-3419}  # sparrow is on 3417, crow on 3418
 
 # deploy/deploy.sh runs uv as budgie-runner; the venvs it builds must not point under a home dir (ProtectHome).
 UV_BIN=$(command -v uv || true)
@@ -101,8 +101,13 @@ else
   echo "    $OPT/current does not exist yet; the services start after the first deploy"
 fi
 
-"$CADDY_SETUP" budgie "127.0.0.1:$PORT"
 URL=https://budgie.${DOMAIN:-andrewminghanjiang.com}
+# sparrow's script ends with a health check of the site, which fails until a release is running.
+if [[ -e $OPT/current/.venv/bin/uvicorn ]]; then
+  "$CADDY_SETUP" budgie "127.0.0.1:$PORT"
+else
+  echo "==> caddy: skipped until the first deploy; then re-run: sudo $0"
+fi
 
 cat <<EOF
 
