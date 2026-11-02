@@ -8,7 +8,7 @@ Spec: `docs/design.md`. Deferred work: `TODO.md`.
 
 On the mini PC, the same way as sparrow (`SPAR-15`): systemd services run the current release in `/opt/budgie/current`.
 
-- `budgie-web`: the FastAPI app (pages + API) on `127.0.0.1:3418`. Caddy serves it to the tailnet only at `https://budgie.andrewminghanjiang.com`, with sparrow's `deploy/caddy/setup.sh`.
+- `budgie-web`: the FastAPI app (pages + API) on `127.0.0.1:3419` (sparrow uses 3417, crow 3418). Caddy serves it to the tailnet only at `https://budgie.andrewminghanjiang.com`, with sparrow's `deploy/caddy/setup.sh`.
 - `budgie-worker`: hourly ingest + embed, 06:30 issue build, 08:00 email, 03:15 backup (7 kept, in `/var/backups/budgie`).
 - `budgie-predeploy`: run by each deploy. It backs up the DB, then runs `alembic upgrade head`.
 
@@ -28,7 +28,7 @@ You need sparrow already deployed on the mini PC (this uses its Caddy script), a
    sudo deploy/setup.sh
    ```
 
-   It is safe to re-run. It asks for the Vercel token only if sparrow's Caddy setup has none.
+   It is safe to re-run. Run it again after the first deploy (step 5): only then does it add the Caddy site, since sparrow's Caddy script checks that the site answers.
 3. **Fill in `/etc/budgie/budgie.env`** (`sudo -e /etc/budgie/budgie.env`). Make the password hash on your laptop with `uv run newsletter hash-password`. Put it in `APP_PASSWORD_HASH` **inside single quotes** (it contains `$`). Fill in the three random secrets and the Resend values. The app does not start without them.
 4. **Install the runner** (one time):
 
