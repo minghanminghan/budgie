@@ -56,6 +56,7 @@ def _posts(session: Session, issue: Issue, link_secret: str) -> list[dict]:
             "author": item.author,
             "minutes": max(1, math.ceil(item.word_count / WORDS_PER_MINUTE)),
             "thumb": thumbs.get(item.id),
+            "is_teaser": item.is_teaser,
         }
         for imp, item in rows
     ]

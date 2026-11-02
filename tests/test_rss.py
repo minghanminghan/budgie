@@ -117,3 +117,15 @@ def test_fetch_short_summary_fetches_page():
     assert "Distributed systems fail" in item.text
     assert item.canonical_link == "https://summary.example.com/posts/how-we-scaled"
     assert item.author == "Ada Lovelace"
+
+
+def test_fetch_marks_substack_paid_preview():
+    # Substack paid posts end the feed preview with a "Read more" link to the post.
+    url = "https://gen.example.com/feed"
+    paid, free = entries(2)
+    paid["body"] = f'<![CDATA[<p>{"word " * 250}</p><p><a href="{paid["link"]}"> Read more </a></p>]]>'
+    free["body"] = f'<![CDATA[<p>{"word " * 250}</p><p><a href="https://elsewhere.com/">Read more</a></p>]]>'
+    web = FakeWeb({url: rss([paid, free])})
+    result = RssAdapter().fetch({"feed_url": url}, {}, web.client())
+    assert web.urls() == [url]
+    assert {i.title: i.is_teaser for i in result.items} == {"Entry 1": True, "Entry 2": False}
