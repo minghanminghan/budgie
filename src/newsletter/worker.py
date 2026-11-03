@@ -106,7 +106,7 @@ def build_scheduler(scheduler: BaseScheduler | None = None) -> BaseScheduler:
     opts = {"coalesce": True, "max_instances": 1, "misfire_grace_time": 3600}
     scheduler.add_job(ingest_job, CronTrigger(minute=0, timezone=ET), id="ingest", **opts)
     scheduler.add_job(build_job, CronTrigger(hour=BUILD_HOUR, minute=BUILD_MINUTE, timezone=ET), id="build", **opts)
-    scheduler.add_job(email_job, CronTrigger(hour=8, minute=0, timezone=ET), id="email", **opts)
+    scheduler.add_job(email_job, CronTrigger(hour=7, minute=0, timezone=ET), id="email", **opts)
     scheduler.add_job(backup_job, CronTrigger(hour=3, minute=15, timezone=ET), id="backup", **opts)
     return scheduler
 

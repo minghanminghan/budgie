@@ -1,5 +1,5 @@
 # Installed to /etc/systemd/system by deploy/setup.sh.
-# Hourly ingest + embed, 06:30 issue build, 08:00 email, 03:15 backup (see newsletter.worker).
+# Hourly ingest + embed, 06:30 issue build, 07:00 email, 03:15 backup (see newsletter.worker).
 [Unit]
 Description=budgie newsletter worker (scheduler)
 After=network.target budgie-web.service
