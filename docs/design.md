@@ -11,7 +11,7 @@ One user (the owner). Success = the ideas on the page are interesting. Failure =
 ## Goals
 
 - A daily page of 15–20 fresh posts, ready by **7:00am US Eastern**.
-- A one-line email at **8:00am US Eastern** linking to the page.
+- A one-line email at **7:00am US Eastern** linking to the page.
 - Thumbs up/down on each post, saved in place (no page change).
 - Add a source from a phone by pasting a URL (form or share sheet). Unsubscribe from the sources page.
 - Rank posts with a model that learns from thumbs. **No LLMs anywhere.**
@@ -145,7 +145,7 @@ Append-only where possible. Tables:
 | Hourly | Ingest all active sources |
 | 6:30 | Build and freeze today's issue; write impressions |
 | 7:00 | Page shows today's issue (until then, `/` shows the latest frozen issue) |
-| 8:00 | Send email |
+| 7:00 | Send email |
 
 ## Web
 
@@ -177,7 +177,7 @@ An iOS Shortcut (or Android "HTTP Shortcuts" app) on the share sheet: takes the 
 
 ## Email
 
-Resend, sent at 8:00am ET to the owner.
+Resend, sent at 7:00am ET to the owner.
 
 - Issue OK: subject like "Today's 18 posts are ready", body = one line + link to `/`.
 - Issue failed: "Today's issue failed" + a short error.
@@ -215,7 +215,7 @@ Seeded from a `sources.yaml` file. Feed URLs below were checked on 2026-10-27.
 
 ## Decided by the owner
 
-Page + one-line email (not email-only). 7am page / 8am email ET. 15–20 posts max; short issues accepted. Rules-only ranker in v1; learned model is the next phase with no thumbs gate. Tailscale for all networking. Password auth; reads open to the tailnet (public until 2026-10-31), writes gated. No LLMs. No points. No story groups. Sitemap adapter as its own extensible layer. Aggregators, discovery, and ranker follow-ups deferred to `TODO.md`. `e5-base-v2` embeddings. Python on Ubuntu, deployed like sparrow (was Docker). Resend.
+Page + one-line email (not email-only). 7am page + email ET. 15–20 posts max; short issues accepted. Rules-only ranker in v1; learned model is the next phase with no thumbs gate. Tailscale for all networking. Password auth; reads open to the tailnet (public until 2026-10-31), writes gated. No LLMs. No points. No story groups. Sitemap adapter as its own extensible layer. Aggregators, discovery, and ranker follow-ups deferred to `TODO.md`. `e5-base-v2` embeddings. Python on Ubuntu, deployed like sparrow (was Docker). Resend.
 
 ## Calls made by Claude (owner to check)
 

@@ -1,6 +1,6 @@
 # Newsletter
 
-A daily page of tech posts from sources you pick. The page is ready at 7:00 a.m. US Eastern. A one-line email links to it at 8:00 a.m. Thumbs up/down train the next ranker. No LLMs.
+A daily page of tech posts from sources you pick. The page is ready at 7:00 a.m. US Eastern. A one-line email links to it at the same time. Thumbs up/down train the next ranker. No LLMs.
 
 Spec: `docs/design.md`. Deferred work: `TODO.md`.
 
@@ -9,7 +9,7 @@ Spec: `docs/design.md`. Deferred work: `TODO.md`.
 On the mini PC, the same way as sparrow (`SPAR-15`): systemd services run the current release in `/opt/budgie/current`.
 
 - `budgie-web`: the FastAPI app (pages + API) on `127.0.0.1:3419` (sparrow uses 3417, crow 3418). Caddy serves it to the tailnet only at `https://budgie.andrewminghanjiang.com`, with sparrow's `deploy/caddy/setup.sh`.
-- `budgie-worker`: hourly ingest + embed, 06:30 issue build, 08:00 email, 03:15 backup (7 kept, in `/var/backups/budgie`).
+- `budgie-worker`: hourly ingest + embed, 06:30 issue build, 07:00 email, 03:15 backup (7 kept, in `/var/backups/budgie`).
 - `budgie-predeploy`: run by each deploy. It backs up the DB, then runs `alembic upgrade head`.
 
 Data is in `/var/lib/budgie` (the SQLite DB and the embedding model). Secrets are in `/etc/budgie/budgie.env`.

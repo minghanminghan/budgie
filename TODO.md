@@ -9,7 +9,7 @@
 - Login limiter is one global limit (10 failures/hour), kept for v1: someone on the tailnet can block new logins for 1h, but the cookie and API token still work. Since the server is tailnet-only (2026-10-31), only tailnet devices can reach the login.
 - Title + author dedup has no time window, so a recurring title ("Monthly roundup") merges with the first one forever.
 - No private-IP guard on URLs followed from feeds and sitemaps.
-- No catch-up email if the worker restarts after 08:00 ET.
+- No catch-up email if the worker restarts after 07:00 ET.
 - `issues` table is missing from the Parquet export.
 - Sessions can only be revoked by rotating `SESSION_SECRET`; the README doesn't say so.
 - `backup_db` creates an empty DB when the path is wrong.
