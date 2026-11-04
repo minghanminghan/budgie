@@ -1,6 +1,6 @@
 # Newsletter
 
-A daily page of tech posts from sources you pick. The page is ready at 7:00 a.m. US Eastern. A one-line email links to it at the same time. Thumbs up/down train the next ranker. No LLMs.
+A daily page of tech posts from sources you pick. The page is ready at 7:00 a.m. US Eastern. An email with links to it and to each post goes out at the same time. Thumbs up/down train the next ranker. No LLMs.
 
 Spec: `docs/design.md`. Deferred work: `TODO.md`.
 

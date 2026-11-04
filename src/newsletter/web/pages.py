@@ -1,4 +1,3 @@
-import math
 from datetime import date, timedelta
 from importlib.metadata import version
 
@@ -8,17 +7,17 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from newsletter.auth import (
-    SESSION_COOKIE, SESSION_MAX_AGE, check_session_token, make_session_token, sign_link, unsign_link,
+    SESSION_COOKIE, SESSION_MAX_AGE, check_session_token, make_session_token, unsign_link,
     verify_password,
 )
 from newsletter.clock import go_live_at, issue_date_for
-from newsletter.feedback import current_thumbs, record_click, record_page_view
-from newsletter.models import Impression, Issue, Item, ItemSource, Source
+from newsletter.feedback import record_click, record_page_view
+from newsletter.models import Impression, Issue, Source
+from newsletter.posts import issue_posts
 from newsletter.rank.issue import visible_issue
 from newsletter.web.deps import get_db, now_of, owner_of
 
 router = APIRouter()
-WORDS_PER_MINUTE = 230
 
 
 def render(request: Request, name: str, status: int = 200, **ctx) -> HTMLResponse:
@@ -31,42 +30,11 @@ def _last_live_date(now) -> date:
     return today if now >= go_live_at(today) else today - timedelta(days=1)
 
 
-def _posts(session: Session, issue: Issue, link_secret: str) -> list[dict]:
-    rows = session.execute(
-        select(Impression, Item).join(Item, Item.id == Impression.item_id)
-        .where(Impression.issue_id == issue.id).order_by(Impression.slot)
-    ).all()
-    if not rows:
-        return []
-    item_ids = [item.id for _, item in rows]
-    titles = dict(session.execute(select(Source.id, Source.title)).all())
-    first_source = {}
-    for item_id, source_id in session.execute(
-        select(ItemSource.item_id, ItemSource.source_id).where(ItemSource.item_id.in_(item_ids))
-        .order_by(ItemSource.seen_at)
-    ):
-        first_source.setdefault(item_id, source_id)
-    thumbs = current_thumbs(session, item_ids)
-    return [
-        {
-            "impression_id": imp.id,
-            "href": f"/c/{sign_link(imp.id, link_secret)}",
-            "title": item.title,
-            "source": titles.get(imp.features.get("source_id") or first_source.get(item.id), item.site_domain),
-            "author": item.author,
-            "minutes": max(1, math.ceil(item.word_count / WORDS_PER_MINUTE)),
-            "thumb": thumbs.get(item.id),
-            "is_teaser": item.is_teaser,
-        }
-        for imp, item in rows
-    ]
-
-
 def _issue_page(request: Request, session: Session, issue: Issue | None) -> HTMLResponse:
     owner = owner_of(request)
     if issue is not None and owner:
         record_page_view(session, issue.id, request.headers.get("user-agent"), now_of(request))
-    posts = _posts(session, issue, request.app.state.settings.link_signing_secret) if issue else []
+    posts = issue_posts(session, issue, request.app.state.settings.link_signing_secret) if issue else []
     return render(request, "issue.html", owner=owner, issue=issue, posts=posts)
 
 
