@@ -2,7 +2,7 @@
 
 ## Launch (do first)
 
-- **Deploy** — follow `README.md` "Deploy (mini PC)": push to GitHub, `sudo deploy/setup.sh`, fill `/etc/budgie/budgie.env`, `deploy/runner.sh`, push to `main`, `sudo budgie seed sources.yaml`.
+- **Deploy** — follow `README.md` "Deploy (mini PC)": push to GitHub, `sudo hawk runner ...`, `sudo hawk setup budgie <checkout>`, fill `/etc/budgie/budgie.env`, push to `main`, `sudo budgie seed sources.yaml`.
 
 ## v1 known gaps (from the final review)
 
