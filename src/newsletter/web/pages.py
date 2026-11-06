@@ -121,5 +121,5 @@ def healthz():
 
 @router.get("/api/version")
 def app_version():
-    # public, unlike the rest of /api: deploy/deploy.sh checks it after a restart
+    # public, unlike the rest of /api: hawk deploy checks it after a restart
     return {"version": version("newsletter")}

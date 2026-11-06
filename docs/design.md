@@ -188,8 +188,8 @@ Resend, sent at 7:00am ET to the owner.
 
 ## Deployment
 
-- `deploy/setup.sh` (one time, safe to re-run) creates the users, dirs, units and `/etc/budgie/*.env`, and runs sparrow's Caddy script for `budgie.andrewminghanjiang.com`. `BASE_URL` = that URL.
-- CI/CD as in sparrow: `pr.yml` checks PR titles and runs the tests; `release.yml` runs the tests on `main`, semantic-release tags a version, and the self-hosted runner (label `budgie`) runs `deploy/deploy.sh`. It builds the release with `uv sync`, runs `budgie-predeploy`, switches `/opt/budgie/current`, restarts both services, checks `/api/version`, and keeps 3 releases.
+- `sudo hawk setup budgie <checkout>` (one time, safe to re-run) creates the user, dirs, units and the Caddy site for `budgie.andrewminghanjiang.com`, then runs `deploy/hawk-setup.sh` for `/etc/budgie/*.env`. `BASE_URL` = that URL.
+- CI/CD as in sparrow: `pr.yml` checks PR titles and runs the tests; `release.yml` runs the tests on `main`, then calls hawk's release workflow: semantic-release tags a version, and the hawk runner runs `hawk deploy budgie`. It builds the release with `deploy/build.sh` (`uv sync`), runs `budgie-predeploy`, switches `/opt/budgie/current`, restarts both services, checks `/api/version`, and keeps 3 releases.
 - Nightly SQLite backup (`.backup`), kept 7 days, on the same server. Off-server backup is in `TODO.md`.
 
 ## Initial sources

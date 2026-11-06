@@ -1,4 +1,3 @@
-import re
 import subprocess
 from pathlib import Path
 
@@ -52,29 +51,16 @@ def test_env_example_lists_every_secret():
     assert "TS_AUTHKEY" not in keys
 
 
-def test_runner_may_only_start_predeploy_and_restart_services():
-    rule = re.search(r'NOPASSWD: (.*)"\)', (DEPLOY / "setup.sh").read_text())[1]
-    allowed = {c.strip().split(" ", 1)[1] for c in rule.split(",")}
-    assert allowed == {"start budgie-predeploy", "restart budgie-web", "restart budgie-worker"}
-
-
-def test_deploy_uses_only_allowed_sudo_commands():
-    used = set(re.findall(r"sudo systemctl (\w+ [\w-]+)", (DEPLOY / "deploy.sh").read_text()))
-    assert used == {"start budgie-predeploy", "restart budgie-web", "restart budgie-worker"}
-
-
 def test_scripts_parse():
     for script in DEPLOY.glob("*.sh"):
         subprocess.run(["bash", "-n", str(script)], check=True)
 
 
-def test_release_deploys_on_the_budgie_runner():
-    jobs = workflow("release.yml")["jobs"]
-    assert jobs["release"]["needs"] == "test"
-    assert jobs["deploy"]["needs"] == "release"
-    assert jobs["deploy"]["runs-on"] == "budgie"
-    assert jobs["deploy"]["if"] == "needs.release.outputs.released == 'true'"
-    assert any(s.get("run") == "deploy/deploy.sh" for s in jobs["deploy"]["steps"])
+def test_release_deploys_with_hawk():
+    job = workflow("release.yml")["jobs"]["hawk"]
+    assert job["needs"] == "test"
+    assert job["uses"] == "minghanminghan/hawk/.github/workflows/release.yml@main"
+    assert job["with"] == {"app": "budgie"}
 
 
 def test_workflows_trigger_as_sparrow_does():

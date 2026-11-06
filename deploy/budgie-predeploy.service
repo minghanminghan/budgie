@@ -1,5 +1,5 @@
-# Installed to /etc/systemd/system by deploy/setup.sh.
-# Started by deploy/deploy.sh: backs up the DB (if there is one), then migrates it with the new build at /opt/budgie/next.
+# Installed to /etc/systemd/system by hawk setup.
+# Started by hawk deploy: backs up the DB (if there is one), then migrates it with the new build at /opt/budgie/next.
 [Unit]
 Description=budgie pre-deploy DB backup and migration
 

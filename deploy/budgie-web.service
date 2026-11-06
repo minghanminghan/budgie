@@ -1,4 +1,4 @@
-# Template: deploy/setup.sh fills in @PORT@ and installs it to /etc/systemd/system.
+# Template: hawk setup fills in @PORT@ and installs it to /etc/systemd/system.
 [Unit]
 Description=budgie newsletter web app (uvicorn)
 After=network.target

@@ -255,7 +255,7 @@ def test_healthz(web):
 
 def test_version_is_public(web):
     from importlib.metadata import version
-    # no login: deploy/deploy.sh checks it after a restart
+    # no login: hawk deploy checks it after a restart
     assert web.get("/api/version").json() == {"version": version("newsletter")}
 
 

@@ -8,41 +8,40 @@ Spec: `docs/design.md`. Deferred work: `TODO.md`.
 
 On the mini PC, the same way as sparrow (`SPAR-15`): systemd services run the current release in `/opt/budgie/current`.
 
-- `budgie-web`: the FastAPI app (pages + API) on `127.0.0.1:3419` (sparrow uses 3417, crow 3418). Caddy serves it to the tailnet only at `https://budgie.andrewminghanjiang.com`, with sparrow's `deploy/caddy/setup.sh`.
+- `budgie-web`: the FastAPI app (pages + API) on `127.0.0.1:3419` (sparrow uses 3417, crow 3418). Caddy serves it to the tailnet only at `https://budgie.andrewminghanjiang.com`, through hawk.
 - `budgie-worker`: on start (so on each deploy), subscribes to new `sources.yaml` entries; hourly ingest + embed, 06:30 issue build, 07:00 email, 03:15 backup (7 kept, in `/var/backups/budgie`).
 - `budgie-predeploy`: run by each deploy. It backs up the DB, then runs `alembic upgrade head`.
 
 Data is in `/var/lib/budgie` (the SQLite DB and the embedding model). Secrets are in `/etc/budgie/budgie.env`.
 
-Every push to `main` runs the tests. semantic-release tags a version from the conventional commits, and the self-hosted runner on the mini PC deploys it (`deploy/deploy.sh`). Pull requests check the title and run the tests.
+Every push to `main` runs the tests. [hawk](https://github.com/minghanminghan/hawk)'s release workflow tags a version from the conventional commits, and its runner on the mini PC deploys it (`hawk deploy budgie`, which runs `deploy/build.sh`). Pull requests check the title and run the tests.
 
 ## Deploy (mini PC)
 
-You need sparrow already deployed on the mini PC (this uses its Caddy script), and `uv` installed system-wide:
+Deploys go through [hawk](https://github.com/minghanminghan/hawk), installed at `/opt/hawk`. Its registry entry is `apps/budgie.env`. You also need `uv` installed system-wide:
 `curl -LsSf https://astral.sh/uv/install.sh | sudo env UV_INSTALL_DIR=/usr/local/bin sh`.
 
-1. **Push the repo to GitHub** and protect `main`, as for sparrow.
+1. **Install the runner** (one time):
+
+   ```sh
+   gh api -X POST repos/minghanminghan/budgie/actions/runners/registration-token -q .token   # on your laptop
+   sudo hawk runner https://github.com/minghanminghan/budgie <token>
+   ```
+
 2. **Set up the mini PC.** From a checkout of this repo on the mini PC:
 
    ```sh
-   sudo deploy/setup.sh
+   sudo hawk setup budgie <checkout>
    ```
 
-   It is safe to re-run. Run it again after the first deploy (step 5): only then does it add the Caddy site, since sparrow's Caddy script checks that the site answers.
+   It is safe to re-run. It makes the user, dirs, units and Caddy site, then runs `deploy/hawk-setup.sh` (`/etc/budgie/*.env`, the `budgie` CLI, the uv dirs).
 3. **Fill in `/etc/budgie/budgie.env`** (`sudo -e /etc/budgie/budgie.env`). Make the password hash on your laptop with `uv run newsletter hash-password`. Put it in `APP_PASSWORD_HASH` **inside single quotes** (it contains `$`). Fill in the three random secrets and the Resend values. The app does not start without them.
-4. **Install the runner** (one time):
+4. **Deploy.** Merge a `fix:` or `feat:` PR to `main`.
+5. **Sources.** The worker subscribes to `sources.yaml` when it starts, so each deploy adds new entries. It does not bring back a source you unsubscribed in the web UI: run `sudo budgie seed sources.yaml` for that. To fetch now instead of at the top of the hour: `sudo budgie ingest`.
 
-   ```sh
-   gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token -q .token   # on your laptop
-   sudo RUNNER_TOKEN=<token> REPO_URL=https://github.com/<owner>/<repo> deploy/runner.sh
-   ```
+6. Open `https://budgie.andrewminghanjiang.com` from a device on your tailnet, log in, and check `/sources`.
 
-5. **First deploy.** Push to `main`, or re-run the deploy job of the latest release workflow run.
-6. **Sources.** The worker subscribes to `sources.yaml` when it starts, so each deploy adds new entries. It does not bring back a source you unsubscribed in the web UI: run `sudo budgie seed sources.yaml` for that. To fetch now instead of at the top of the hour: `sudo budgie ingest`.
-
-7. Open `https://budgie.andrewminghanjiang.com` from a device on your tailnet, log in, and check `/sources`.
-
-Rollback: `sudo ln -sfn /opt/budgie/releases/<old> /opt/budgie/current && sudo systemctl restart budgie-web budgie-worker`. If a migration changed the DB, restore a backup first (below).
+Rollback: `sudo hawk rollback budgie [release]`. If a migration changed the DB, restore a backup first (below).
 
 Phone share-sheet setup: `docs/share-shortcut.md`.
 

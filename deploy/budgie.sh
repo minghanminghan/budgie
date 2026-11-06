@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installed to /usr/local/bin/budgie by deploy/setup.sh. Runs the newsletter CLI as the budgie user with
+# Installed to /usr/local/bin/budgie by deploy/hawk-setup.sh. Runs the newsletter CLI as the budgie user with
 # the services' environment, from the current release (so `seed sources.yaml` reads the deployed file):
 #   sudo budgie seed sources.yaml
 #   sudo budgie backup
