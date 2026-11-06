@@ -121,9 +121,8 @@ Deploys (CD): install the GitHub runner once, then each release on main deploys 
   token: gh api -X POST repos/<owner>/<repo>/actions/runners/registration-token -q .token
   First deploy: re-run the deploy job of the latest release workflow run.
 
-After the first deploy:
-  sudo budgie seed sources.yaml
-  sudo budgie ingest            # optional: fetch now instead of at the top of the hour
+After the first deploy, the worker has subscribed to sources.yaml. To fetch now instead of at the top of the hour:
+  sudo budgie ingest
 
 Backups: the worker writes one nightly into $BACKUPS (7 kept). Run one now: sudo budgie backup
 EOF

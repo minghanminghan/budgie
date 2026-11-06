@@ -28,12 +28,16 @@ def preview(url: str, client, adapters: list[Adapter], adapter: str | None = Non
 
 
 def subscribe(session: Session, url: str, client, adapters: list[Adapter],
-              now: datetime, adapter: str | None = None, options: dict | None = None) -> Source | None:
-    """Discover and subscribe. The first ingest happens on the next hourly run."""
+              now: datetime, adapter: str | None = None, options: dict | None = None,
+              reactivate: bool = True) -> Source | None:
+    """Discover and subscribe. The first ingest happens on the next hourly run.
+    With `reactivate=False`, an unsubscribed source stays unsubscribed."""
     cfg = preview(url, client, adapters, adapter, options)
     if cfg is None:
         return None
     source = session.scalar(select(Source).where(Source.config_key == cfg.config_key))
+    if source is not None and not reactivate and source.status == "unsubscribed":
+        return source
     if source is not None:
         source.status = "active"
         source.unsubscribed_at = None
@@ -67,7 +71,7 @@ def unsubscribe(session: Session, source_id: int, now: datetime) -> bool:
 
 
 def seed_from_yaml(session: Session, path: Path, client, adapters: list[Adapter],
-                   now: datetime) -> list[tuple[str, Source | None]]:
+                   now: datetime, reactivate: bool = True) -> list[tuple[str, Source | None]]:
     """Each entry is a URL, or `{url, adapter, ...}`: the other keys are options for that
     adapter, except `ticket` (a Sparrow task id, for people). The `pending` list is not seeded."""
     entries = (yaml.safe_load(Path(path).read_text()) or {}).get("sources") or []
@@ -78,7 +82,8 @@ def seed_from_yaml(session: Session, path: Path, client, adapters: list[Adapter]
         options = {k: v for k, v in entry.items() if k not in ("url", "adapter", "ticket")}
         url = entry["url"]
         try:
-            out.append((url, subscribe(session, url, client, adapters, now, entry.get("adapter"), options)))
+            out.append((url, subscribe(session, url, client, adapters, now, entry.get("adapter"), options,
+                                          reactivate)))
         except Exception:
             session.rollback()
             log.exception("seed failed for %s", url)
