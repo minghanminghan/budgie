@@ -107,3 +107,14 @@ def test_options_need_a_pinned_adapter():
     url = "https://fake.example.com/"
     with pytest.raises(ValueError):
         preview(url, None, [OptionFake(known=[url])], options={"include": "x"})
+
+
+def test_seed_without_reactivate_keeps_unsubscribed(session, now, tmp_path):
+    url = "https://fake.example.com/a"
+    adapters = [FakeAdapter(known=[url])]
+    source = subscribe(session, url, None, adapters, now)
+    unsubscribe(session, source.id, now)
+    path = tmp_path / "sources.yaml"
+    path.write_text(f"sources:\n  - {url}\n")
+    [(_, got)] = seed_from_yaml(session, path, None, adapters, now, reactivate=False)
+    assert got.id == source.id and got.status == "unsubscribed" and got.unsubscribed_at == now

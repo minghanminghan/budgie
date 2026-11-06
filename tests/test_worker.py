@@ -8,7 +8,8 @@ from newsletter import worker
 from newsletter.clock import ET
 from newsletter.config import get_settings
 from newsletter.db import make_engine, sessionmaker_for
-from newsletter.models import Base, Issue
+from newsletter.models import Base, Issue, Source
+from tests.fakes import FakeAdapter
 
 
 @pytest.fixture
@@ -57,3 +58,17 @@ def test_catch_up_waits_before_build_time(temp_db):
     worker.catch_up(datetime(2026, 10, 27, 6, 0, tzinfo=ET))
     with sessionmaker_for(temp_db)() as s:
         assert s.scalar(select(Issue)) is None
+
+
+def test_seed_job_adds_sources_from_yaml(temp_db, tmp_path, monkeypatch):
+    url = "https://fake.example.com/"
+    path = tmp_path / "sources.yaml"
+    path.write_text(f"sources:\n  - {url}\n  - https://nope.example.com/\n")
+    monkeypatch.setattr(worker, "default_adapters", lambda: [FakeAdapter(known=[url])])
+    worker.seed_job(path)
+    with sessionmaker_for(temp_db)() as s:
+        assert s.scalars(select(Source.input_url)).all() == [url]
+
+
+def test_seed_job_swallows_errors(temp_db, tmp_path):
+    worker.seed_job(tmp_path / "missing.yaml")  # returns normally

@@ -9,7 +9,7 @@ Spec: `docs/design.md`. Deferred work: `TODO.md`.
 On the mini PC, the same way as sparrow (`SPAR-15`): systemd services run the current release in `/opt/budgie/current`.
 
 - `budgie-web`: the FastAPI app (pages + API) on `127.0.0.1:3419` (sparrow uses 3417, crow 3418). Caddy serves it to the tailnet only at `https://budgie.andrewminghanjiang.com`, with sparrow's `deploy/caddy/setup.sh`.
-- `budgie-worker`: hourly ingest + embed, 06:30 issue build, 07:00 email, 03:15 backup (7 kept, in `/var/backups/budgie`).
+- `budgie-worker`: on start (so on each deploy), subscribes to new `sources.yaml` entries; hourly ingest + embed, 06:30 issue build, 07:00 email, 03:15 backup (7 kept, in `/var/backups/budgie`).
 - `budgie-predeploy`: run by each deploy. It backs up the DB, then runs `alembic upgrade head`.
 
 Data is in `/var/lib/budgie` (the SQLite DB and the embedding model). Secrets are in `/etc/budgie/budgie.env`.
@@ -38,12 +38,7 @@ You need sparrow already deployed on the mini PC (this uses its Caddy script), a
    ```
 
 5. **First deploy.** Push to `main`, or re-run the deploy job of the latest release workflow run.
-6. **Seed sources.**
-
-   ```sh
-   sudo budgie seed sources.yaml
-   sudo budgie ingest     # optional: fetch now instead of at the top of the hour
-   ```
+6. **Sources.** The worker subscribes to `sources.yaml` when it starts, so each deploy adds new entries. It does not bring back a source you unsubscribed in the web UI: run `sudo budgie seed sources.yaml` for that. To fetch now instead of at the top of the hour: `sudo budgie ingest`.
 
 7. Open `https://budgie.andrewminghanjiang.com` from a device on your tailnet, log in, and check `/sources`.
 
@@ -80,7 +75,7 @@ On the mini PC: `sudo budgie <command>` (the newsletter CLI as the `budgie` user
      ticket: BUDGIE-7
    ```
 
-4. Re-run `seed` (it updates the rule on an existing source), check `/sources`, and close the task with `sparrow update BUDGIE-7 --status done`.
+4. Merge it: the deploy seeds it (and updates the rule on an existing source). Check `/sources`, and close the task with `sparrow update BUDGIE-7 --status done`.
 
 ## Restore from a backup
 

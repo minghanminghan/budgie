@@ -18,12 +18,14 @@ from newsletter.emailer import ResendSender, send_daily_email
 from newsletter.http import PoliteClient
 from newsletter.ingest.base import default_adapters
 from newsletter.ingest.pipeline import ingest_all
+from newsletter.ingest.sources import seed_from_yaml
 from newsletter.models import Issue
 from newsletter.rank.issue import build_issue
 from newsletter.rank.rules import RulesRanker
 
 log = logging.getLogger("newsletter.worker")
 BUILD_HOUR, BUILD_MINUTE = 6, 30
+SOURCES_PATH = Path("sources.yaml")  # the release's copy: the service runs in /opt/budgie/current
 
 
 def _now() -> datetime:
@@ -37,6 +39,21 @@ def _session():
 @lru_cache
 def _embedder(model_name: str) -> Embedder:
     return Embedder(model_name)  # the model loads once, on first use
+
+
+def seed_job(path: Path = SOURCES_PATH) -> None:
+    """Subscribe to new sources.yaml entries on each start (so on each deploy).
+    It does not bring back a source that was unsubscribed in the web UI."""
+    client = PoliteClient()
+    try:
+        with _session() as session:
+            results = seed_from_yaml(session, path, client, default_adapters(), _now(), reactivate=False)
+        failed = [url for url, source in results if source is None]
+        log.info("seed: %d ok, %d failed %s", len(results) - len(failed), len(failed), failed or "")
+    except Exception:
+        log.exception("seed job failed")
+    finally:
+        client.close()
 
 
 def ingest_job() -> None:
@@ -114,6 +131,7 @@ def build_scheduler(scheduler: BaseScheduler | None = None) -> BaseScheduler:
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     scheduler = build_scheduler()
+    seed_job()
     catch_up(_now())
     log.info("worker started")
     scheduler.start()
