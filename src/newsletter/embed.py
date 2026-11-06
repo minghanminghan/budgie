@@ -15,6 +15,31 @@ def passage_text(title: str, text: str) -> str:
     return f"passage: {title}\n{text}"
 
 
+class OnnxModel:
+    """The model repo's ONNX export (`onnx/`), mean-pooled like its sentence-transformers config."""
+
+    def __init__(self, model_name: str):
+        import onnxruntime
+        from huggingface_hub import hf_hub_download
+        from tokenizers import Tokenizer
+
+        self.tokenizer = Tokenizer.from_file(hf_hub_download(model_name, "onnx/tokenizer.json"))
+        self.tokenizer.enable_truncation(MAX_SEQ_LENGTH)
+        self.tokenizer.enable_padding()
+        self.session = onnxruntime.InferenceSession(hf_hub_download(model_name, "onnx/model.onnx"),
+                                                    providers=["CPUExecutionProvider"])
+        self.input_names = {i.name for i in self.session.get_inputs()}
+
+    def encode(self, texts: list[str]) -> np.ndarray:
+        enc = self.tokenizer.encode_batch(texts)
+        inputs = {"input_ids": np.array([e.ids for e in enc], dtype=np.int64),
+                  "attention_mask": np.array([e.attention_mask for e in enc], dtype=np.int64),
+                  "token_type_ids": np.array([e.type_ids for e in enc], dtype=np.int64)}
+        hidden = self.session.run(None, {k: v for k, v in inputs.items() if k in self.input_names})[0]
+        mask = inputs["attention_mask"][:, :, None].astype(np.float32)
+        return (hidden * mask).sum(axis=1) / np.maximum(mask.sum(axis=1), 1e-9)
+
+
 class Embedder:
     def __init__(self, model_name: str, model=None):
         self.model_name = model_name
@@ -23,14 +48,11 @@ class Embedder:
     @property
     def model(self):
         if self._model is None:
-            from sentence_transformers import SentenceTransformer
-
-            self._model = SentenceTransformer(self.model_name, device="cpu")
-            self._model.max_seq_length = MAX_SEQ_LENGTH
+            self._model = OnnxModel(self.model_name)
         return self._model
 
     def embed(self, texts: list[str]) -> np.ndarray:
-        out = np.asarray(self.model.encode(texts, normalize_embeddings=True), dtype=np.float32)
+        out = np.asarray(self.model.encode(texts), dtype=np.float32)
         norms = np.linalg.norm(out, axis=1, keepdims=True)
         return out / np.where(norms == 0, 1, norms)
 

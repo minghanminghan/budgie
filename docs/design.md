@@ -55,7 +55,7 @@ Three systemd services on the mini PC, run as the `budgie` user from `/opt/budgi
 
 Storage: one SQLite file (WAL mode) in `/var/lib/budgie`. SQLAlchemy models, Alembic migrations. The embedding model cache also lives there.
 
-Libraries: `feedparser`, `httpx`, `trafilatura` (main text, author, date, and sitemap reading), `sentence-transformers`, `scikit-learn`, `resend`.
+Libraries: `feedparser`, `httpx`, `trafilatura` (main text, author, date, and sitemap reading), `onnxruntime` + `tokenizers` (the model repo's ONNX export, no torch), `resend`.
 
 ## Ingest
 
