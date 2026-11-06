@@ -11,6 +11,7 @@ sources:
   - https://engineering.atspotify.com/feed
   - https://medium.com/feed/pinterest-engineering
   - https://eng.lyft.com/feed
+  - https://blog.fsck.com/feed/feed.xml
   # Sitemap (no feed): the URL path is the prefix filter
   - https://www.goodfire.com/blog
   # Listing page: post links read from the blog's index page. Pinned because
