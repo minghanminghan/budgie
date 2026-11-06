@@ -9,8 +9,7 @@
   :root {
     --paper: #EEF2F5; --ink: #1C2733; --muted: #5B6B7A; --rule: #D3DCE3;
     --pine: #2F6F5E; --brick: #9A4A3C; --focus: #3B7BBF;
-    --serif: Charter, "Bitstream Charter", "Iowan Old Style", "Sitka Text", Cambria, Georgia, serif;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--paper); color: var(--ink); font: 1rem/1.5 var(--sans); }
@@ -22,9 +21,9 @@
   nav .push { margin-left: auto; }
   a { color: inherit; }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-  h1 { font: 600 2.4rem/1.1 var(--serif); letter-spacing: -.01em; margin: 0 0 .3rem; }
+  h1 { font: 600 2.4rem/1.1 var(--sans); letter-spacing: -.01em; margin: 0 0 .3rem; }
   .lede { color: var(--muted); margin: 0 0 2rem; }
-  .empty { font: 1.15rem/1.6 var(--serif); color: var(--muted); }
+  .empty { font: 1.15rem/1.6 var(--sans); color: var(--muted); }
   button, input { font: inherit; }
   .link-button { background: none; border: 0; padding: 0; color: var(--muted); cursor: pointer; font-size: .9rem; }
   .link-button:hover { color: var(--ink); }
